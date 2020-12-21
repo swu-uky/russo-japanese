@@ -14,73 +14,383 @@
             padding: 0;
         }
 
-        #iiif-map {
+        #map {
             position: absolute;
-            width: 100%;
+            width: 60%;
             top: 0;
             bottom: 0;
         }
 
-        #current-view {
+        #info-panel {
             position: absolute;
-            left: 60px;
-            top: 12px;
-            z-index: 1000;
-            background: whitesmoke;
-            padding: 8px 12px;
+            width: 37%;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            background-color: #e0d3af;
+            padding: 12px 18px 3%;
+        }
+
+        h1,
+        h2,
+        h3,
+        p {
+            font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
         }
 
         #ui {
-            position: absolute;
-            left: 12px;
-            bottom: 12px;
-            z-index: 1000;
-            background: whitesmoke;
             padding: 8px 12px;
+        }
+
+        button {
+            width: 30%;
+        }
+
+        #btn-p {
+            margin-right: 12px;
+        }
+
+        #btn-c {
+            margin-right: 12px;
         }
     </style>
 </head>
 
 <body>
-    <div id="iiif-map"></div>
-    <div id="current-view">
-        Current Bounds:<br />
-        <div id="current-bounds"></div>
-    </div>
-    <div id="ui">
-        <button id="zoom-to-legend">Zoom In</button>
+    <div id="map"></div>
+    <div id="info-panel">
+        <h1>Russo-Japanese Propaganda</h1>
+        <h2><i>A Humorous Diplomatic Atlas of Europe and Asia</i></h2>
+        <div id="ui">
+            <button id="btn-p">
+                << Previous</button> <button id="btn-c">Recenter
+            </button>
+            <button id="btn-n">Next >></button>
+        </div>
+        <div id="place-info">
+            <h3>Intro:</h3>
+            <p>Welcome to a deep dive of <b><i>A Humorous Diplomatic Atlas of Europe and Asia</i></b>, a propaganda map
+                made during the onset of the Russo-Japanese War (1904-05).</p>
+            <p>For a guided tour, use the buttons above to navigate through the sections.<br>
+                Otherwise, feel free to click on individual markers to jump around manually.</p>
+            <h3>Note:</h3>
+            <p>In this map, Japanese is written from <b><i>right to left</i></b> and sometimes
+                <b><i>vertically</i></b>.<br>
+                For easier reading comprehension alongside the English commentary, Japanese in this info section will be
+                written from <b><i>left to right</i></b>.</p>
+            <h3>References:</h3>
+            <p>Maps courtesy of <a href="https://collections.leventhalmap.org/" target="_blank">Norman B. Leventhal Map
+                    & Education Center</a>.<br>
+                Japanese analysis via <a href="https://www.library.pref.gifu.lg.jp/" target="_blank">Gifu Prefectural
+                    Library</a>.<br>
+                <a href="https://en.wikipedia.org/wiki/Main_Page" target="_blank">Wikipedia</a> for certain
+                supplementary materials.<br>
+                Special thanks to Mark Wada for translation of Nishida writings.</p>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
         integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
         crossorigin=""></script>
     <script src="https://cdn.rawgit.com/mejackreed/Leaflet-IIIF/v3.0.0/leaflet-iiif.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"
+        integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
 
     <script>
-        const map = L.map("iiif-map", {
+        const map = L.map("map", {
             center: [0, 0],
             crs: L.CRS.Simple,
             zoom: 0,
         });
 
+        // request IIIF layer and add to map
         const chamizalLayer = new L.tileLayer.iiif(
-            "https://iiif.digitalcommonwealth.org/iiif/2/commonwealth:9s161c165/info.json"
-        ).addTo(map);
+            "https://iiif.digitalcommonwealth.org/iiif/2/commonwealth:9s161c165/info.json").addTo(map);
 
-        map.on("moveend", () => {
-            const currentBounds = map.getBounds().toBBoxString();
+        // select the side panel div to insert info into later
+        const placeInfo = $('#place-info');
 
-            document.getElementById("current-bounds").innerText = currentBounds;
+        // select the UI elements and reference with variables
+        const previousButton = $('#btn-p');
+        const recenterButton = $('#btn-c');
+        const nextButton = $('#btn-n');
+
+        // markers for key places in the story
+        const title = L.marker([-220, 1010]).addTo(map);
+        const name = L.marker([-770, 0]).addTo(map);
+        const date = L.marker([-830, 170]).addTo(map);
+        const rose = L.marker([-500, 400]).addTo(map);
+        const ohara = L.marker([-550, 900]).addTo(map);
+        const english = L.marker([-220, 290]).addTo(map);
+        const foreword = L.marker([-830, 1025]).addTo(map);
+        const explain = L.marker([-830, 600]).addTo(map);
+        const end = L.marker([-830, 280]).addTo(map);
+
+        // construct text string to be inserted into DOM
+        const originalHtml =
+            `<h3>Intro:</h3>
+            <p>Welcome to a deep dive of <b><i>A Humorous Diplomatic Atlas of Europe and Asia</i></b>, a propaganda map
+                made during the onset of the Russo-Japanese War (1904-05).</p>
+            <p>For a guided tour, use the buttons above to navigate through the sections.<br>
+                Otherwise, feel free to click on individual markers to jump around manually.</p>
+            <h3>Note:</h3>
+            <p>In this map, Japanese is written from <b><i>right to left</i></b> and sometimes
+                <b><i>vertically</i></b>.<br>
+                For easier reading comprehension alongside the English commentary, Japanese in this info section will be
+                written from <b><i>left to right</i></b>.</p>
+            <h3>References:</h3>
+            <p>Maps courtesy of <a href ="https://collections.leventhalmap.org/" target="_blank">Norman B. Leventhal Map & Education Center</a>.<br>
+                Japanese analysis via <a href ="https://www.library.pref.gifu.lg.jp/" target="_blank">Gifu Prefectural Library</a>.<br>
+                <a href="https://en.wikipedia.org/wiki/Main_Page" target="_blank">Wikipedia</a> for certain supplementary materials.<br>
+                Special thanks to Mark Wada for translation of Nishida writings.</p>`
+
+        const titleHtml =
+            `<h3>Title & Mapmaker:</h3>
+            <p>The title is diplayed here in the larger characters:</p>
+            <p><b>滑稽: <b style="color:red">Humorous</b></b><br>
+                <b>歐: <b style="color:red">Europe</b></b><br>
+                <b>亞: <b style="color:red">Asia</b></b><br>
+                <b>外交: <b style="color:red">Diplomatic</b></b><br>
+                <b>地圖: <b style="color:red">Map</b></b></p>
+            <p>The English translation is written below, while the two lines above it provide more information on the people involved:</p>
+            <p><b>法學博士: <b style="color:red">Juris Doctor</b></b> (JD)<br>
+                <b>中村進午: <b style="color:red">Nakamura, Shingo</b></b> (Last Name, First Name)<br>
+                <b>慶應義塾大學: <b style="color:red">Keio University</b></b><br>
+                <b>小原喜三郎: <b style="color:red">Ohara, Kisaburo</b></b> (Last Name, First Name)</p>
+            <p>This map is the work of Keio University student Kisaburo Ohara and reviewed by law professor Shingo Nakamura.</p>`
+
+        const nameHtml =
+            `<h3>Author & Printer:</h3>
+            <p>Two additional names can be seen here on the far left:</p>
+            <p><b>著作兼發行者: <b style="color:red">Author and Publisher</b></b><br>
+                <b>西田助太郎: <b style="color:red">Nishida, Suketaro</b></b> (Last Name, First Name)<br>
+                <b>印刷人: <b style="color:red">Printer</b></b><br>
+                <b>藪寄芳次郎: <b style="color:red">Yabuyori, Yoshijiro</b></b> (Last Name, First Name)</p>
+            <p>While Ohara made the map, it appears Suketaro Nishida was the one who penned the commentary section on the bottom while Yoshijiro Yabuyori handled the printing.</p>`
+
+        const dateHtml =
+            `<h3>Date & Perspective:</h3>
+            <p>There are two things to point out here. First, the date, documented here as:</p>
+            <p><b>明治三十七年三月: <b style="color:red">Meiji, Year 37, March</b></b></p>
+            <p>To this day, Japan still uses two eras: the Western era we are familiar with as well as their own traditional one (in this case the Meiji era).
+                However, ever since Japan started incorporating the Gregorian calendar in 1873 (Meiji 6), the months and days for both systems have been identical.
+                Thus, March of Meiji 37 dates this map to March of 1904.</p>
+            <p>Secondly, the perspective. In his piece <i>The Power of Maps</i>, Jeremy Crampton pointed out how maps can facilitate narrative.
+                One of the first things to look for, especially on propaganda maps, is how the argument is being framed.
+                So what was the perspective of these particular mapmakers?
+                Here, at the end of the commentary section, in extra large characters, Nishida stated:</p>
+            <p><b>大日本帝國萬歲!!!: <b style="color:red">Long live the Empire of Japan!!!</b></b></p>
+            <p>Perhaps the usage of Japanese was a big hint, but this statement solidified the stance this map took in the Russo-Japanese conflict.</p>`
+
+        const roseHtml =
+            `<h3>Influence & Symbology:</h3>
+            <p>If you are well-versed in propaganda maps, you may have felt a sense of familiarity with this one. That is because most of this left side
+                was a copy of:</p>
+            <p><b>Frederick Rose's <a href="https://collections.leventhalmap.org/search/commonwealth:0r96fk80z" target="_blank"><i>Serio-Comic War Map</i></a> (1877)</b></p>
+            <p>It is likely that, with a background in England, it was Nakamura who introduced Rose's work to Ohara. The latter, in turn, incorporated Rose's styles, as all
+                the European countries are drawn near identically.</p>
+            <p>In her article <i>Persuasive Cartography</i>, Judith A. Tyner discussed the importance of individual symbols as elements of a persuasive map.
+                She specifically pointed out the octopus, used as early as 1870, as the symbol for the spread of evil, with its tentacles grasping for influence and power.
+                The sections on Nishida's writings will go over individual countries more in depth.</p>
+            <p>Although the political climate has shifted since Rose, Ohara chose to keep the same imagery to maintain a similar atmosphere as he added an Asian scene.</P>`
+
+        const oharaHtml =
+            `<h3>Ohara's Addition:</h3>
+            <p>Carrying over the stylistic choices of Rose, Ohara extended the serio-comic war map to include Asia.
+                Much like Rose's work, the actions of the octopus tentacles reflected the relationship Russia had with each country involved:</p>
+            <p>The rightmost tentacle stretches up and around the left arm of China, moving down towards Port Arthur.
+                This symbolizes the <a href="https://en.wikipedia.org/wiki/Chinese_Eastern_Railway" target="_blank">Chinese Eastern Railway</a>,
+                a construction project Russia started in 1897 to connect the cities of Chita and Vladivostok. The extension towards Port Arthur refers to
+                <a href="https://en.wikipedia.org/wiki/L%C3%BCshunkou_District#Russo-Japanese_War_(1904%E2%80%931905)" target="_blank">Russia's refusal to withdraw from Manchuria</a>,
+                sparking the start of the Russo-Japanese War in February 1904.</p>
+            <p>While Korea is depicted as oblivious, Japan is portrayed as a battle-ready soldier:<br>
+                gun in one hand, flag in the other.</p>
+            <p>On the bottom, British India can be seen reaching up to combat the tentacle grabbing Tibet's right arm, citing the
+                <a href="https://en.wikipedia.org/wiki/British_expedition_to_Tibet" target="_blank">British Invasion of Tibet</a> to thwart Russian expansion.</p>`
+
+        const englishHtml =
+            `<h3>Mapmaker's Note:</h3>
+            <p>Ohara added his own commentary in English as well. Due to the similarities with <i>Serio-Comic War Map</i>, it is safe to assume the prominent Englishman
+                refers to Frederick Rose. Ohara included his personal take on the "Black Octopus", describing it as:</p>
+            <p><b>"avaricious, [streching] out...in all directions, [seizing] up every thing that comes within reach."</b></p>
+            <p>However, Ohara hinted that due to its excessive greed, Russia had bit off more than it could chew with Japan, expressed here as a "small fish".
+                He believed the outcome of the Russo-Japanese War would mark the end of Russia's global influence, as he continued with his confidence in his home country.
+                Much like Nishida, Ohara ends his commentary with a similar chant of "Hurrah! Hurrah! For Japan."</p>`
+
+        const forewordHtml =
+            `<h3>Foreword:</h3>
+            <p>The remaining sections will go over key points in Nishida's writings at the bottom, starting with his preface.</p>
+            <p><b>緒言: <b style="color:red">Foreword / Preface / Introduction</b></b></p>
+            <p><b>水面に飛躍する程の肝魂もなければ正々堂々:<br>
+                <b style="color:red">Does not have the soul to leap into the water</b></b></p>
+            <p><b>隊伍を整えて遊泳する様な勇気も持たないで海底暗いところに自分の陣地を構えて傲然虚勢を張り:<br>
+                <b style="color:red">Does not have the courage to swim in formation, but set up camp in the dark undersea, arrogant and vain</b></b></p>
+            <p><b>頭の空っぽなのも自ら悟らず無暗矢鱈に手を八方に伸ばしてる:<br>
+                <b style="color:red">Does not realize head is empty, and reaches out in all directions</b></b></p>
+            <p>Nishida's foreword is essentially a reiteration of Ohara's commentary.
+            He started off with a mention of the Englishman before going into his own descriptions of the "Black Octopus".</p>`
+
+        const explainHtml =
+            `<h3>Explanation:</h3>
+            <p><b>說明: <b style="color:red">Explanation / Description</b></b></p>
+            <p>In this section, Nishida went over each individual country illustrated on the map, one at a time.
+                Feel free to pan and zoom around as you go over the notable ones listed here:</p>
+            <p><b style="color:red">Hungary is rushing to cut off the outstretched hand of the octopus, but Austria is trying hard to contain it.<b></p>
+            <p><b style="color:red">Is Spain still tired from the Spanish-American War?<b></p>
+            <p><b style="color:red">Portugal is probably drinking alcohol to forget all the bad things.<b></p>
+            <p><b style="color:red">Denmark, although small, is showing independence.<b></p>
+            <p><b style="color:red">Arabia is not very diplomatic, and has no interest in global relations.<b></p>`
+
+        const endHtml =
+            `<h3>Ending:</h3>
+            <p>Nishida ended his explanation with a final section, which roughly translates to:</p>
+            <p><b style="color:red">For 2500 years, with the continued imperial line, the great Japanese Empire still has not tasted defeat even once.
+                Japan has just inflicted a serious wound on this rude, roughneck, outlaw's (octopus) leg. We will wait and see how bad the damage we have done is.
+                LONG LIVE THE EMPIRE OF JAPAN!!!</b></p>
+            <p>This marks the end of the guided tour.<br>
+                Press the "Recenter" button to return to the first page.</p>`
+
+        // function to be called when both clicking on marker and
+        // when using UI buttons to move forward and back
+        function triggerTitle() {
+            placeInfo.html(titleHtml);
+            map.flyTo(title.getLatLng(), 1.5);
+        }
+
+        function triggerName() {
+            placeInfo.html(nameHtml);
+            map.flyTo(name.getLatLng(), 1.5);
+        }
+
+        function triggerDate() {
+            placeInfo.html(dateHtml);
+            map.flyTo(date.getLatLng(), 2.5);
+        }
+
+        function triggerRose() {
+            placeInfo.html(roseHtml);
+            map.flyTo(rose.getLatLng(), 0.5);
+        }
+
+        function triggerOhara() {
+            placeInfo.html(oharaHtml);
+            map.flyTo(ohara.getLatLng(), 0.5);
+        }
+
+        function triggerEnglish() {
+            placeInfo.html(englishHtml);
+            map.flyTo(english.getLatLng(), 1.5);
+        }
+
+        function triggerForeword() {
+            placeInfo.html(forewordHtml);
+            map.flyTo(foreword.getLatLng(), 2.5);
+        }
+
+        function triggerExplain() {
+            placeInfo.html(explainHtml);
+            map.flyTo(explain.getLatLng(), 0.5);
+        }
+
+        function triggerEnd() {
+            placeInfo.html(endHtml);
+            map.flyTo(end.getLatLng(), 2.5);
+        }
+
+        // counter to keep track of where in story the user is
+        let counter = 0;
+
+        // on marker click, trigger event and update counter
+        title.on('click', () => {
+            triggerTitle();
+            counter = 0;
         });
 
-        document
-            .getElementById("zoom-to-legend")
-            .addEventListener("click", () => {
-                map.flyToBounds([
-                    [-584, 12],
-                    [-284, 312],
-                ]);
-            });
+        name.on('click', () => {
+            triggerName();
+            counter = 1;
+        });
+
+        date.on('click', () => {
+            triggerDate();
+            counter = 2;
+        });
+
+        rose.on('click', () => {
+            triggerRose();
+            counter = 3;
+        });
+
+        ohara.on('click', () => {
+            triggerOhara();
+            counter = 4;
+        });
+
+        english.on('click', () => {
+            triggerEnglish();
+            counter = 5;
+        });
+
+        foreword.on('click', () => {
+            triggerForeword();
+            counter = 6;
+        });
+
+        explain.on('click', () => {
+            triggerExplain();
+            counter = 7;
+        })
+
+        end.on('click', () => {
+            triggerEnd();
+            counter = 8;
+        })
+
+        // use a list to dictate order of story
+        const story = ['title', 'name', 'date', 'rose', 'ohara', 'english', 'foreword', 'explain', 'end'];
+
+        // object mapping the name of the places in the story
+        // to the function to be triggered
+        const storyMap = {
+            title: triggerTitle,
+            name: triggerName,
+            date: triggerDate,
+            rose: triggerRose,
+            ohara: triggerOhara,
+            english: triggerEnglish,
+            foreword: triggerForeword,
+            explain: triggerExplain,
+            end: triggerEnd
+        }
+
+        // forward button increments counter and calls appropriate trigger function
+        nextButton.on('click', () => {
+            console.log('before: counter: ', counter, 'object: ', story[counter]);
+            if (counter < story.length) {
+                storyMap[story[counter]]();
+            }
+            if (counter < story.length - 1) {
+                counter++;
+            }
+            console.log('after: counter:', counter, 'object: ', story[counter]);
+        });
+
+        // backward button decreases value of counter and calls appropriate trigger function
+        previousButton.on('click', () => {
+            console.log('before: counter: ', counter, 'object: ', story[counter]);
+            if (counter > 0) {
+                counter--;
+                storyMap[story[counter]]();
+            }
+            console.log('after: counter: ', counter, 'object: ', story[counter]);
+        });
+
+        // recenter button returns user to original settings
+        recenterButton.on('click', () => {
+            map.flyTo([-482, 634], -1);
+            placeInfo.html(originalHtml);
+            counter = 0;
+        });
     </script>
 </body>
 
